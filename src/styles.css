@@ -1,1 +1,13 @@
 /* You can add global styles to this file, and also import other style files */
+.column {
+  float: left;
+  width: 40%;
+  padding: 10px;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}

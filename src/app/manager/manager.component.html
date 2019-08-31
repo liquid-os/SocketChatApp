@@ -1,0 +1,73 @@
+
+<div class="row">
+  <div class="column">
+    <header>
+      <font size = "6">Chat Menu</font>
+    </header>
+
+    <div style="width:100%;height:130px;border:2px solid #000;">
+      <div>
+        <label>Select a Group: </label>
+          <select [(ngModel)]="selectedGroup">
+              <option *ngFor="let grp of groups" value={{grp}}>
+                  {{grp}}
+              </option>
+          </select>
+          <button (click)="selectGroup()">Enter Group</button>
+      </div>
+      <div *ngIf="selectedGroup!=''">
+        <label>Select a Channel: </label>
+          <select [(ngModel)]="selectedChannel">
+              <option *ngFor="let chn of channels" value={{chn}}>
+                  {{chn}}
+              </option>
+          </select>
+          <button (click)="selectChannel()">Enter Channel</button>
+      </div>
+    </div>
+</div>
+<div class="column">
+  <header>
+    <font size = "6">Control Panel</font>
+  </header>
+  <div *ngIf="perms>0">
+    <div style="width:100%;height:130px;border:2px solid #000;">
+      <font size = "5">Roles:</font>
+      <div *ngIf="perms>=1">
+        <font size = "4"><b>Group Admin Role.</b> You can create/remove groups, and channels within groups.
+          You can also add users to (and remove users from) groups. You can also promote users to the Group Admin role.</font>
+      </div>
+      <div *ngIf="perms==2">
+        <font size = "4"><b>Super Admin Role.</b> You can create and remove users.
+          You can also promote users to the Super Admin Role.</font>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:100%;height:40px;border:2px solid #000;">
+    <div>
+      <font size = "5">Group Manager </font>
+      <input [(ngModel)]="text_group" name="text_group" class="input"/>
+      <button (click)="login()">Create Group</button>
+      <button (click)="login()">Remove Group</button>
+    </div>
+  </div>
+  <div style="width:100%;height:40px;border:2px solid #000;">
+    <div>
+      <font size = "5">Channel Manager {{selectedGroup}} </font>
+      <input [(ngModel)]="text_channel" name="text_channel" class="input"/>
+      <button (click)="login()">Create Channel</button>
+      <button (click)="login()">Remove Channel</button>
+    </div>
+  </div>
+  <div style="width:100%;height:40px;border:2px solid #000;">
+    <div>
+      <font size = "5">Channel Manager {{selectedGroup}} </font>
+      <input [(ngModel)]="text_user" name="text_user" class="input"/>
+      <button (click)="login()">Add To Group</button>
+      <button (click)="login()">Remove From Group</button>
+    </div>
+  </div>
+
+</div>
+</div>
