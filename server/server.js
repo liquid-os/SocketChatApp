@@ -14,9 +14,12 @@ console.log("Express server started.");
 
 io.on('connection', function(socket){
   socket.on("login", function(data){
+    user = createUser(data.name, data.email);
+    getUserByName(data.name).id = socket.id;
     var ip = socket.request.connection.remoteAddress;
     console.log(data.username);
     console.log(data.email);
+    console.log(socket.id);
     socket.emit("getchannels", objectListToStrings(getGroupByName(data).channelList));
   });
   socket.on("getchannels", function(data){
@@ -45,11 +48,21 @@ io.on('connection', function(socket){
   });
 });
 
+function sendToUser(name, packetID, msg){
+  user = getUserByName(name);
+  id = 0;
+  if(user != null){
+    id = user.id;
+    io.to(id).emit(packetID, msg);
+  }
+}
+
 
 //perms: 0 = user, 1 = group admin, 2 = super admin
 class User{
   constructor(name, email){
     this.name = name;
+    this.id = 0;
     this.email = email;
     this.perms = 0;
   }
@@ -59,6 +72,7 @@ class Group{
   constructor(name){
     this.name = name;
     this.assisList = [];
+    this.users = [];
     this.channelList = [];
   }
 
@@ -69,21 +83,29 @@ class Group{
       }
     }
   }
-
 }
 
-groups = [];
+function addToGroup(username, groupname){
+  group = getGroupByName(groupname);
+  user = getUserByName(username);
+  group.users.push(user);
+}
 
+
+groups = [];
 users = [];
 
-function createGroup(group){
+function createGroup(name){
+  group = new Group(name);
   this.groups.push(group);
 }
 
 function createUser(name, email){
   var existing = getUserByName(name);
   if(existing == null){
-    new_user = new User()
+    new_user = new User(name);
+    this.users.push(new_user);
+    return new_user;
   }else{
     return existing;
   }
