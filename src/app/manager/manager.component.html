@@ -44,7 +44,7 @@
     </div>
   </div>
 
-  <div style="width:100%;height:40px;border:2px solid #000;">
+  <div *ngIf="perms>0" style="width:100%;height:40px;border:2px solid #000;">
     <div>
       <font size = "5">Group Manager </font>
       <input [(ngModel)]="text_group" name="text_group" class="input"/>
@@ -52,7 +52,7 @@
       <button (click)="login()">Remove Group</button>
     </div>
   </div>
-  <div style="width:100%;height:40px;border:2px solid #000;">
+  <div *ngIf="isAssis or perms>0" style="width:100%;height:40px;border:2px solid #000;">
     <div>
       <font size = "5">Channel Manager {{selectedGroup}} </font>
       <input [(ngModel)]="text_channel" name="text_channel" class="input"/>
@@ -60,12 +60,18 @@
       <button (click)="login()">Remove Channel</button>
     </div>
   </div>
-  <div style="width:100%;height:40px;border:2px solid #000;">
+  <div *ngIf="isAssis or perms>0" style="width:100%;height:40px;border:2px solid #000;">
     <div>
-      <font size = "5">Channel Manager {{selectedGroup}} </font>
+      <font size = "5">User Manager {{selectedGroup}} {{selectedChannel}}</font>
       <input [(ngModel)]="text_user" name="text_user" class="input"/>
-      <button (click)="login()">Add To Group</button>
-      <button (click)="login()">Remove From Group</button>
+      <div *ngIf="currentGroup!=''">
+        <button (click)="login()">Add To {{currentGroup}}</button>
+        <button (click)="login()">Remove From {{currentGroup}}</button>
+      </div>
+      <div *ngIf="currentChannel!=''">
+        <button (click)="login()">Add To {{currentChannel}}</button>
+        <button (click)="login()">Remove From {{currentChannel}}</button>
+      </div>
     </div>
   </div>
 
