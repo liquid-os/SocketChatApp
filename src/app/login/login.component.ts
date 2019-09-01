@@ -17,12 +17,16 @@ export class LoginComponent implements OnInit {
 
   ngOnInit() {
     this.socketService.listen('login').subscribe((data)=>{
-       this.router.navigate(['/', 'manager']);
+      localStorage.setItem('username', data[0]);
+      localStorage.setItem('perms', data[1]);
+      console.log(data[0]);
+      console.log(data[1]);
+      this.router.navigate(['/', 'manager']);
     });
   }
 
   login(){
-    this.socketService.send('login', {'username':this.username, 'email':this.email});
+    this.socketService.send('login', [this.username, this.email]);
   }
 
 }
