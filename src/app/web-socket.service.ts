@@ -7,14 +7,14 @@ import { Observable } from 'rxjs';
 })
 export class WebSocketService {
 
-  socket;
-  readonly server_url = '//localhost:3000';
+  socket : any;
+  readonly server_url = 'localhost:3000';
 
   constructor() {
     this.socket = io(this.server_url);
   }
 
-  listen(eventName){
+  listen(eventName : string){
     return new Observable((subscriber) =>{
       this.socket.on(eventName, (data) => {
         subscriber.next(data);
@@ -22,7 +22,7 @@ export class WebSocketService {
     });
   }
 
-  send(eventName, data){
+  send(eventName, data : any){
     this.socket.emit(eventName, data);
   }
 }

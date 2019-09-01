@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { WebSocketService } from '../web-socket.service';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -12,11 +13,11 @@ export class LoginComponent implements OnInit {
   email : string;
   username : string;
 
-  constructor(private socketService : WebSocketService) { }
+  constructor(private socketService : WebSocketService, private router : Router) { }
 
   ngOnInit() {
     this.socketService.listen('login').subscribe((data)=>{
-       console.log(data);
+       this.router.navigate(['/', 'manager']);
     });
   }
 

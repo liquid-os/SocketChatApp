@@ -15,7 +15,7 @@
           </select>
           <button (click)="selectGroup()">Enter Group</button>
       </div>
-      <div *ngIf="selectedGroup!=''">
+      <div *ngIf="currentGroup!=''">
         <label>Select a Channel: </label>
           <select [(ngModel)]="selectedChannel">
               <option *ngFor="let chn of channels" value={{chn}}>
@@ -52,17 +52,17 @@
       <button (click)="login()">Remove Group</button>
     </div>
   </div>
-  <div *ngIf="isAssis or perms>0" style="width:100%;height:40px;border:2px solid #000;">
+  <div *ngIf="(isAssis || perms>0)" style="width:100%;height:40px;border:2px solid #000;">
     <div>
-      <font size = "5">Channel Manager {{selectedGroup}} </font>
+      <font size = "5">Channel Manager [{{currentGroup}}/{{currentChannel}}] </font>
       <input [(ngModel)]="text_channel" name="text_channel" class="input"/>
       <button (click)="login()">Create Channel</button>
       <button (click)="login()">Remove Channel</button>
     </div>
   </div>
-  <div *ngIf="isAssis or perms>0" style="width:100%;height:40px;border:2px solid #000;">
+  <div *ngIf="(isAssis || perms>0)" style="width:100%;height:80px;border:2px solid #000;">
     <div>
-      <font size = "5">User Manager {{selectedGroup}} {{selectedChannel}}</font>
+      <font size = "5">User Manager [{{currentGroup}}/{{currentChannel}}]</font>
       <input [(ngModel)]="text_user" name="text_user" class="input"/>
       <div *ngIf="currentGroup!=''">
         <button (click)="login()">Add To {{currentGroup}}</button>
@@ -74,6 +74,5 @@
       </div>
     </div>
   </div>
-
 </div>
 </div>

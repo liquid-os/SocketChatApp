@@ -15,20 +15,31 @@ console.log("Express server started.");
 io.on('connection', function(socket){
   socket.on("login", function(data){
     user = createUser(data.name, data.email);
-    getUserByName(data.name).id = socket.id;
-    var ip = socket.request.connection.remoteAddress;
+    createdUser = getUserByName(data.name);
+    createdUser.id = socket.id;
     console.log(data.username);
     console.log(data.email);
     console.log(socket.id);
-    socket.emit("getchannels", objectListToStrings(getGroupByName(data).channelList));
+    console.log(createdUser.id);
+    socket.emit("login", [createdUser.id, createdUser.perms]);
+    //socket.emit("showgroups", getGroupNames());
+  });
+  socket.on("populate", function(data){
+    //socket.emit("showgroups", getGroupNames());
+    grpjson = JSON.stringify(groups);
+    socket.emit("showgroups", grpjson);
   });
   socket.on("getchannels", function(data){
     //send back the list of channels on given group
-    socket.emit("getchannels", objectListToStrings(getGroupByName(data).channelList));
+    socket.emit("showchannel", objectListToStrings(getGroupByName(data).channelList));
   });
-  socket.on("getchannels", function(data){
+  socket.on("selectgroup", function(data){
     //send back the list of channels on given group
-    socket.emit("getchannels", objectListToStrings(getGroupByName(data).channelList));
+    console.log(data);
+    socket.emit("setgroup", data);
+    var group = getGroupByName(data)
+    if(group != null)
+      socket.emit("addchannels", objectListToStrings(group.channelList));
   });
   socket.on("addgroup", function(data){
     //add group and send back to clients
@@ -44,7 +55,7 @@ io.on('connection', function(socket){
     var group = this.getGroupByName(data.group);
     var channel = group.getChannelByName(data.channel);
     channel.messages.push(data.text);
-    io.emit("msg", {'group':(group.name) 'channel':(channel.name), 'text':(data.text)});
+    io.emit("msg", [group.name, channel.name, data.text]);
   });
 });
 
@@ -57,6 +68,32 @@ function sendToUser(name, packetID, msg){
   }
 }
 
+function getGroupChannelsForUser(username, groupname){
+  var ret = [];
+  user = getUserByName(name);
+  group = getGroupByName(groupname);
+  for(ch in group.channelList){
+    var isValid = false;
+    for(u in ch.users){
+      if(u.name == username){
+        isValid = true;
+      }
+    }
+    if(user.perms >= 1 || isValid){
+      ret.push(ch.name);
+    }
+  }
+  return ret;
+}
+
+function getGroupNames(){
+  var ret = [];
+  for(g in this.groups){
+    ret.push(g.name);
+    console.log(g.name);
+  }
+  return ret;
+}
 
 //perms: 0 = user, 1 = group admin, 2 = super admin
 class User{
@@ -76,7 +113,7 @@ class Group{
     this.channelList = [];
   }
 
-  getChannelByName(name){
+getChannelByName(name){
     for (var i = 0; i < this.channelList.length; i++) {
       if(this.channelList[i] == name){
         return this.channelList[i];
@@ -91,8 +128,7 @@ function addToGroup(username, groupname){
   group.users.push(user);
 }
 
-
-groups = [];
+groups = ["g1", "g2", "g3", "g4"];
 users = [];
 
 function createGroup(name){
@@ -111,8 +147,6 @@ function createUser(name, email){
   }
 }
 
-
-
 function getUserByName(name){
   for (var i = 0; i < this.users.length; i++) {
     if(this.users[i].name == name){
@@ -123,9 +157,8 @@ function getUserByName(name){
 }
 
 function getGroupByName(name){
-  n = name.toUpperCase();
   for (var i = 0; i < this.groups.length; i++) {
-    if(n == this.groups[i].name){
+    if(name == this.groups[i].name){
       return this.groups[i];
     }
   }
