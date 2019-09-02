@@ -30,16 +30,15 @@ io.on('connection', function(socket){
     grpjson = JSON.stringify(getGroupNames());
     socket.emit("showgroups", grpjson);
   });
-  socket.on("getchannels", function(data){
-    //send back the list of channels on given group
-    socket.emit("showchannels", objectListToStrings(getGroupByName(data).channelList));
-  });
   socket.on("selectgroup", function(data){
     //send back the list of channels on given group
     var group = getGroupByName(data[1])
     if(group != null){
       socket.emit("setgroup", data[1]);
-      socket.emit("showchannels", JSON.stringify(objectListToStrings(group.channelList)));
+      usr = getUserByName(data[0]);
+      //channel_list = group.getChannelNamesForUser(usr);
+      socket.emit("refreshchannels", [data[1], data[0]]);
+      //socket.emit("showchannels", JSON.stringify(objectListToStrings(group.channelList)));
       if(group.isAssis(data[0])){
         socket.emit("setassis", 1);
       }else{
@@ -48,8 +47,8 @@ io.on('connection', function(socket){
     }
   });
   socket.on("selectchannel", function(data){
-    socket.emit("setchannel", data);
-  }
+    socket.emit("setchannel", data[1]);
+  });
   socket.on("creategroup", function(data){
     //add group and send back to clients
     createGroup(data);
@@ -65,8 +64,22 @@ io.on('connection', function(socket){
   socket.on("createchannel", function(data){
     //add group and send back to clients
     createChannel(data[0], data[1]);
-    grpjson = JSON.stringify(getGroupNames());
-    io.emit("showgroups", grpjson);
+    console.log("Group name "+data[0]);
+    console.log("Channel name "+data[1]);
+    group = getGroupByName(data[0]);
+    usr = getUserByName(data[2]);
+    //channel_list = group.getChannelNamesForUser(usr);
+    console.log(channel_list);
+    io.emit("refreshchannels", [data[0], data[2]]);
+  });
+  socket.on("refreshchannels", function(data){
+    //add group and send back to clients
+    group = getGroupByName(data[0]);
+    usr = getUserByName(data[1]);
+    rawlist = group.getChannelNamesForUser(usr);
+    channel_list = JSON.stringify(rawlist);
+    console.log(channel_list);
+    socket.emit("showchannels", channel_list);
   });
   socket.on("adduser", function(data){
     //add group and send back to clients
@@ -82,8 +95,8 @@ io.on('connection', function(socket){
 });
 
 function sendToUser(name, packetID, msg){
-  user = getUserByName(name);
-  id = 0;
+  var user = getUserByName(name);
+  var id = 0;
   if(user != null){
     id = user.id;
     io.to(id).emit(packetID, msg);
@@ -91,8 +104,8 @@ function sendToUser(name, packetID, msg){
 }
 
 function removeGroup(name){
-  grp = getGroupByName(name);
-  index = 0;
+  var grp = getGroupByName(name);
+  var index = 0;
   for (var i = 0; i < this.groups.length; i++) {
     grp = this.groups[i];
     if(grp.name == name){
@@ -105,8 +118,8 @@ function removeGroup(name){
 
 function getGroupChannelsForUser(username, groupname){
   var ret = [];
-  user = getUserByName(name);
-  group = getGroupByName(groupname);
+  var user = getUserByName(name);
+  var group = getGroupByName(groupname);
   for(ch in group.channelList){
     var isValid = false;
     for(u in ch.users){
@@ -122,8 +135,8 @@ function getGroupChannelsForUser(username, groupname){
 }
 
 function createChannel(groupname, name){
-  grp = getGroupByName(groupname);
-  exist = false;
+  var grp = getGroupByName(groupname);
+  var exist = false;
   if(grp != null){
     for (var i = 0; i < grp.channelList.length; i++) {
       ch = grp.channelList[i];
@@ -133,7 +146,7 @@ function createChannel(groupname, name){
       }
     }
   }
-  if(exist == false){
+  if(exist == false && grp != null){
     ch = new Channel(name, groupname);
     grp.channelList.push(ch);
     return ch;
@@ -174,6 +187,27 @@ class Group{
     return false;
   }
 
+  getChannelNamesForUser(user){
+    var ret = [];
+    if(this.channelList.length > 0){
+      for (var i = 0; i < this.channelList.length; i++) {
+        ch = this.channelList[i];
+        if(ch != null){
+          var valid = false;
+          for (var j = 0; j < ch.users.length; j++) {
+            if(ch.users[j].name == user.name){
+              valid = true;
+            }
+          }
+          if(user.perms > 0 || valid == true){
+            ret.push(ch.name);
+          }
+        }
+      }
+    }
+    return ret;
+  }
+
   getChannelByName(name){
     for (var i = 0; i < this.channelList.length; i++) {
       if(this.channelList[i] == name){
@@ -184,8 +218,8 @@ class Group{
 }
 
 function addToGroup(username, groupname){
-  group = getGroupByName(groupname);
-  user = getUserByName(username);
+  var group = getGroupByName(groupname);
+  var user = getUserByName(username);
   group.users.push(user);
 }
 
@@ -200,12 +234,12 @@ createGroup("Help");
 u = createUser('super', 'xyz@gmail.com', 2);
 
 function createGroup(name){
-  group = new Group(name);
+  var group = new Group(name);
   this.groups.push(group);
 }
 
 function createUser(name, email, perms){
-  existing = getUserByName(name);
+  var existing = getUserByName(name);
   if(existing == null){
     console.log("creating new user "+name);
     new_user = new User(name, email, perms);

@@ -17,20 +17,41 @@
           <button (click)="selectGroup()">Enter Group</button>
       </div>
       <div *ngIf="currentGroup!=''">
-        <label>Select a Channel: </label>
-          <select [(ngModel)]="selectedChannel">
-              <option *ngFor="let chn of channels" value={{chn}}>
-                  {{chn}}
-              </option>
-          </select>
-          <button (click)="selectChannel()">Enter Channel</button>
+        <div *ngIf="channels.length > 0">
+          <label>Select a Channel: </label>
+            <select [(ngModel)]="selectedChannel">
+                <option *ngFor="let chn of channels" value={{chn}}>
+                    {{chn}}
+                </option>
+            </select>
+            <button (click)="selectChannel()">Enter Channel</button>
+          </div>
+          <div *ngIf="channels.length <= 0">
+            <label>Select a Channel: </label>
+              You do not have permission to enter any channels in this group.
+              <br>
+            </div>
+          <div>
+            <h2>
+              Welcome to {{currentGroup}}!
+              <br>
+              <button (click)="leaveGroup()">Leave Group</button>
+            </h2>
+          </div>
       </div>
     </div>
     <div *ngIf="currentChannel!=''" style="width:100%;height:130px;border:2px solid #000;">
       <div>
+        <div>
+          <h3>
+            Channel: {{currentChannel}}
+            <br>
+            <button (click)="leaveChannel()">Leave Channel</button>
+          </h3>
+        </div>
         <label>Type a Message: </label>
-          <input [(ngModel)]="text_user" name="text_user" class="input"/>
-          <button (click)="selectGroup()">Send Message</button>
+          <input [(ngModel)]="text_msg" name="text_msg" class="input"/>
+          <button (click)="sendMessage()">Send Message</button>
       </div>
     </div>
 </div>
@@ -76,13 +97,24 @@
       </div>
     </div>
   </div>
-  <div *ngIf="(isAssis || perms>0)" style="width:100%;height:80px;border:2px solid #000;">
+  <div *ngIf="(isAssis || perms>0)" style="width:100%;height:160px;border:2px solid #000;">
     <div>
       <font size = "5">User Manager [{{currentGroup}}/{{currentChannel}}]</font>
       <input [(ngModel)]="text_user" name="text_user" class="input"/>
       <div *ngIf="currentChannel!='' && text_user!=''">
         <button (click)="addUserToChannel()">Add To {{currentChannel}}</button>
         <button (click)="removeUserFromChannel()">Remove From {{currentChannel}}</button>
+      </div>
+      <div *ngIf="text_user!='' && perms >= 2">
+        <button (click)="promoteToSuper()">Promote User to Super Admin</button>
+        <button (click)="deleteUser()">Delete User</button>
+      </div>
+      <div *ngIf="text_user!='' && perms >= 1">
+        <button (click)="createUser()">Create User</button>
+        <button (click)="promoteToGroup()">Promote User to Group Admin</button>
+      </div>
+      <div *ngIf="text_user!='' && (perms >= 1 || isAssis)">
+        <button (click)="giveGroupAssis()">Promote User to Group Assis</button>
       </div>
     </div>
   </div>

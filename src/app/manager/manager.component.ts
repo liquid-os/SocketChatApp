@@ -21,6 +21,7 @@ export class ManagerComponent implements OnInit {
   text_group = "";
   text_channel = "";
   text_user = "";
+  text_msg = "";
 
   currentGroup = "";
   currentChannel = "";
@@ -32,11 +33,15 @@ export class ManagerComponent implements OnInit {
   }
 
   selectChannel(){
-    this.socketService.send("selectchannel", this.selectedChannel);
+    this.socketService.send("selectchannel", [this.username, this.selectedChannel]);
+  }
+
+  sendMessage(){
+    // TODO
   }
 
   createGroup(){
-    if(text_group == ""){
+    if(this.text_group == ""){
       alert("Please enter a group name into the text field!");
     }else{
       this.socketService.send("creategroup", this.text_group);
@@ -45,7 +50,7 @@ export class ManagerComponent implements OnInit {
   }
 
   removeGroup(){
-    if(text_group == ""){
+    if(this.text_group == ""){
       alert("Please enter a group name into the text field!");
     }else{
       this.socketService.send("removegroup", this.text_group);
@@ -62,8 +67,18 @@ export class ManagerComponent implements OnInit {
   }
 
   createChannel(){
-    this.socketService.send("createchannel", [this.currentGroup, this.text_channel]);
+    this.socketService.send("createchannel", [this.currentGroup, this.text_channel, this.username]);
     this.text_channel = "";
+  }
+
+  leaveChannel(){
+    this.currentChannel = "";
+  }
+
+  leaveGroup(){
+    this.currentGroup = "";
+    this.currentChannel = "";
+    this.isAssis = false;
   }
 
   removeChannel(){
@@ -72,7 +87,7 @@ export class ManagerComponent implements OnInit {
 
   logout(){
     localStorage.setItem('username', "");
-    localStorage.setItem('perms', 0);
+    localStorage.setItem('perms', '0');
     this.router.navigate(['/', 'login']);
   }
 
@@ -94,10 +109,13 @@ export class ManagerComponent implements OnInit {
        }
     });
     this.socketService.listen('setgroup').subscribe((data)=>{
-       this.currentGroup = data;
+      if(this.currentGroup != data){
+        this.currentGroup = data;
+        this.currentChannel = "";
+      }
     });
     this.socketService.listen('setchannel').subscribe((data)=>{
-       this.currentGroup = data;
+       this.currentChannel = data;
     });
     this.socketService.listen('setassis').subscribe((data)=>{
       if(data == 0){
@@ -119,19 +137,28 @@ export class ManagerComponent implements OnInit {
       }
     });
     this.socketService.listen('kickfromchannel').subscribe((data)=>{
-      if(this.currentGroup == data){
-        alert("The have been kicked from the channel!");
+      if(this.currentGroup == data[0] && this.currentChannel == data[1]){
+        alert("You have been kicked from the channel!");
         this.currentGroup = "";
         this.currentChannel = "";
         this.isAssis = false;
       }
     });
-    this.socketService.listen('showchannels').subscribe((data)=>{
-      this.channels = [];
-      var clist = JSON.parse(data);
-      for(var i = 0; i < clist.length; ++i){
-        this.channels.push(clist[i]);
+    this.socketService.listen('refreshchannels').subscribe((data)=>{
+      if(data[0] == this.currentGroup){
+        this.channels = [];
+        this.socketService.send('refreshchannels', [data[0], data[1]]);
       }
+    });
+    this.socketService.listen('showchannels').subscribe((data)=>{
+      var chlist = JSON.parse(data);
+      console.log("got showchannels"+data);
+      //if(grp == this.currentGroup){
+        for(var i = 0; i < chlist.length; ++i){
+          console.log(chlist[i]);
+          this.channels.push(chlist[i]);
+        }
+      //}
     });
   }
 }
