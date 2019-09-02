@@ -8,10 +8,13 @@ var app = express();
 
 var server = app.listen(3000);
 
+// Init socket.io service
 io = require('socket.io').listen(server);
 
 console.log("Express server started.");
 
+// This is the most important section in the server. Inside this io.on call, all the message
+// handlers are established for the different kinds of packets that the server is ser up to receive.
 io.on('connection', function(socket){
   socket.on("login", function(data){
     user = createUser(data[0], data[1], 0);
@@ -23,22 +26,17 @@ io.on('connection', function(socket){
     console.log(createdUser.id);
     console.log(createdUser.perms);
     socket.emit("login", [createdUser.name, createdUser.perms]);
-    //socket.emit("showgroups", getGroupNames());
   });
   socket.on("populate", function(data){
-    //socket.emit("showgroups", getGroupNames());
     grpjson = JSON.stringify(getGroupNames());
     socket.emit("showgroups", grpjson);
   });
   socket.on("selectgroup", function(data){
-    //send back the list of channels on given group
     var group = getGroupByName(data[1])
     if(group != null){
       socket.emit("setgroup", data[1]);
       usr = getUserByName(data[0]);
-      //channel_list = group.getChannelNamesForUser(usr);
       socket.emit("refreshchannels", [data[1], data[0]]);
-      //socket.emit("showchannels", JSON.stringify(objectListToStrings(group.channelList)));
       if(group.isAssis(data[0])){
         socket.emit("setassis", 1);
       }else{
@@ -56,23 +54,19 @@ io.on('connection', function(socket){
     socket.emit("setchannel", data[1]);
   });
   socket.on("creategroup", function(data){
-    //add group and send back to clients
     createGroup(data);
     grpjson = JSON.stringify(getGroupNames());
     io.emit("showgroups", grpjson);
   });
   socket.on("removegroup", function(data){
-    //add group and send back to clients
     removeGroup(data);
     grpjson = JSON.stringify(getGroupNames());
     io.emit("showgroups", grpjson);
   });
   socket.on("removechannel", function(data){
-    //add group and send back to clients
     removeChannel(data[1], data[2]);
   });
   socket.on("givesuper", function(data){
-    //add group and send back to clients
     usr = getUserByName(data[1]);
     if(usr == null){
       usr = createUser(data[1], '', 0);
@@ -81,27 +75,22 @@ io.on('connection', function(socket){
     sendToUser(data[1], 'setperms', 2);
   });
   socket.on("givegroupadmin", function(data){
-    //add group and send back to clients
     usr = getUserByName(data[1]);
     if(usr == null){
       usr = createUser(data[1], '', 0);
     }
     usr.perms = 1;
     sendToUser(data[1], 'setperms', 1);
-    //socket.emit('setperms', [data[1], 1]);
   });
   socket.on("giveassis", function(data){
-    //add group and send back to clients
     grp = getGroupByName(data[1]);
     usr = getUserByName(data[2]);
     if(usr == null){
       usr = createUser(data[2], '', 0);
     }
     grp.addAssis(usr);
-    //socket.emit('setperms', [data[1], 1]);
   });
   socket.on("createchannel", function(data){
-    //add group and send back to clients
     createChannel(data[0], data[1]);
     group = getGroupByName(data[0]);
     usr = getUserByName(data[2]);
@@ -119,7 +108,7 @@ io.on('connection', function(socket){
     }
   });
   socket.on("addfulluser", function(data){
-    //add group and send back to clients
+    //Create user using all parameters
     var user = createUser(data.name, data.email, data.perms);
   });
   socket.on("addtochannel", function(data){
@@ -137,7 +126,6 @@ io.on('connection', function(socket){
     grp.removeUserFromChannel(data[3], chan);
   });
   socket.on("msg", function(data){
-    //add group and send back to clients
     var group = getGroupByName(data.group);
     var channel = group.getChannelByName(data.channel);
     channel.messages.push(data.text);
@@ -145,6 +133,7 @@ io.on('connection', function(socket){
   });
 });
 
+// Sends a message to a specific user identified by their name
 function sendToUser(name, packetID, msg){
   var user = getUserByName(name);
   var id = 0;
@@ -158,6 +147,8 @@ function sendToUser(name, packetID, msg){
   }
 }
 
+// Removes a user from the server, deleting all their permissions
+// and channel rights.
 function deleteUser(name){
   io.emit('kick', name);
   var index = -1;
@@ -172,6 +163,8 @@ function deleteUser(name){
   }
 }
 
+// Removes a group from the server, kicking all users from the group
+// and any subchannels of the group.
 function removeGroup(name){
   var grp = getGroupByName(name);
   var index = 0;
@@ -185,6 +178,8 @@ function removeGroup(name){
   this.groups.splice(index, 1);
 }
 
+// Removes a channel from the server, kicking all users that are
+// currently logged into it from the channel.
 function removeChannel(groupname, channelname){
   var grp = getGroupByName(groupname);
   var index_g = -1, index_c = -1;
@@ -204,6 +199,8 @@ function removeChannel(groupname, channelname){
   this.groups[index_g].channelList.splice(index_c, 1);
 }
 
+// Returns a list of all channels for the given group that a user
+// has the correct permissions to view.
 function getGroupChannelsForUser(username, groupname){
   var ret = [];
   var user = getUserByName(name);
@@ -222,6 +219,8 @@ function getGroupChannelsForUser(username, groupname){
   return ret;
 }
 
+// Creates a new Channel object and pushes it to the channel list
+// of the given group.
 function createChannel(groupname, name){
   var grp = getGroupByName(groupname);
   var exist = false;
@@ -241,6 +240,7 @@ function createChannel(groupname, name){
   }
 }
 
+// Returns a string list of all group names
 function getGroupNames(){
   var ret = [];
   for (var i = 0; i < this.groups.length; i++) {
@@ -249,6 +249,7 @@ function getGroupNames(){
   return ret;
 }
 
+// Holds information for individual users
 //perms: 0 = user, 1 = group admin, 2 = super admin
 class User{
   constructor(name, email, perms){
@@ -259,6 +260,7 @@ class User{
   }
 }
 
+// Holds information for groups
 class Group{
   constructor(name){
     this.name = name;
@@ -266,6 +268,7 @@ class Group{
     this.channelList = [];
   }
 
+  // Returns true if the user with the given name is an assis for this group
   isAssis(name){
     for(u in this.assisList){
         if(u.name == name){
@@ -275,6 +278,7 @@ class Group{
     return false;
   }
 
+  // Sets the user with the given name to be an assis for this group
   addAssis(user){
     if(this.isAssis(user.name) == false){
       this.assisList.push(user);
@@ -282,6 +286,7 @@ class Group{
     sendToUser(user.name, 'setassisforgrp', [this.name, 1]);
   }
 
+  // Adds the given user to the given channel for this group
   addUserToChannel(user, channel){
     var exists = false;
     var ch = this.getChannelByName(channel);
@@ -298,9 +303,10 @@ class Group{
     }
   }
 
+  // Removes the user with the given name from the given channel for this group
   removeUserFromChannel(username, channel){
     var index = -1;
-    var ch = getChannelByName(channel);
+    var ch = this.getChannelByName(channel);
     if(ch != null){
       for (var i = 0; i < ch.users.length; i++) {
         var u = ch.users[i];
@@ -315,6 +321,7 @@ class Group{
     io.emit('refreshchannels', [this.name, username]);
   }
 
+  // Returns a list of channel names for the given user, for this group
   getChannelNamesForUser(user){
     var ret = [];
     if(this.channelList.length > 0){
@@ -336,6 +343,8 @@ class Group{
     return ret;
   }
 
+  // Searches the channel list to locate a channel with name matching the given
+  // parameter, and returns it (if one is found)
   getChannelByName(name){
     for (var i = 0; i < this.channelList.length; i++) {
       if(this.channelList[i].name == name){
@@ -355,34 +364,39 @@ createGroup("Help");
 
 u = createUser('super', 'xyz@gmail.com', 2);
 
+// Creates a new Group object and pushes it to the global group list
 function createGroup(name){
   var group = new Group(name);
   this.groups.push(group);
 }
 
+// Creates a new user with the given parameters (unless one exists already
+// with a matching name, in which case the function will return that user).
 function createUser(name, email, perms){
   var existing = getUserByName(name);
   if(existing == null){
-    console.log("creating new user "+name);
+    console.log("Creating new user "+name);
     new_user = new User(name, email, perms);
     this.users.push(new_user);
     return new_user;
   }else{
-    console.log("returning existing user");
     return existing;
   }
 }
 
+// Searches the server for a user with name matching the given parameter.
+// If one is found it will be returned.
 function getUserByName(name){
   for (var i = 0; i < this.users.length; i++) {
     if(this.users[i].name == name){
-      console.log("existing user found");
       return this.users[i];
     }
   }
   return null;
 }
 
+// Searches the server for a group with name matching the given parameter.
+// If one is found it will be returned.
 function getGroupByName(name){
   for (var i = 0; i < this.groups.length; i++) {
     if(name == this.groups[i].name){
@@ -391,6 +405,8 @@ function getGroupByName(name){
   }
 }
 
+// Returns a list of strings using the given list
+// and concatenating the 'name' token of each object.
 function objectListToStrings(lst){
   var names = [];
   for (var i = 0; i < lst.length; i++) {
@@ -399,6 +415,7 @@ function objectListToStrings(lst){
   return names;
 }
 
+// Holds information for subgroups/channels
 class Channel{
   constructor(name, group){
     this.name = name;
