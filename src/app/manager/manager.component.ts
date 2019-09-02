@@ -58,14 +58,6 @@ export class ManagerComponent implements OnInit {
     }
   }
 
-  addUserToChannel(){
-
-  }
-
-  removeUserFromChannel(){
-
-  }
-
   createChannel(){
     this.socketService.send("createchannel", [this.currentGroup, this.text_channel, this.username]);
     this.text_channel = "";
@@ -82,7 +74,8 @@ export class ManagerComponent implements OnInit {
   }
 
   removeChannel(){
-
+    this.socketService.send('removechannel', [this.username, this.currentGroup, this.currentChannel]);
+    this.text_channel = "";
   }
 
   logout(){
@@ -91,10 +84,39 @@ export class ManagerComponent implements OnInit {
     this.router.navigate(['/', 'login']);
   }
 
+  createUser(){
+    this.socketService.send('createuser', [this.username, this.text_user]);
+  }
+
+  deleteUser(){
+    this.socketService.send('deleteuser', [this.username, this.text_user]);
+  }
+
+  addUserToChannel(){
+    this.socketService.send('addtochannel', [this.username, this.currentGroup, this.currentChannel, this.text_user]);
+  }
+
+  removeUserFromChannel(){
+    this.socketService.send('removefromchannel', [this.username, this.currentGroup, this.currentChannel, this.text_user]);
+  }
+
+  giveSuperAdmin(){
+    this.socketService.send('givesuper', [this.username, this.text_user]);
+  }
+
+  giveGroupAdmin(){
+    this.socketService.send('givegroupadmin', [this.username, this.text_user]);
+  }
+
+  giveGroupAssis(){
+    this.socketService.send('giveassis', [this.username, this.currentGroup, this.text_user]);
+  }
+
 
   constructor(private socketService : WebSocketService, private router : Router) {}
 
   ngOnInit() {
+    this.channels = [];
     this.perms = parseInt(localStorage.getItem('perms'));
     this.username = localStorage.getItem('username');
     this.socketService.send('populate', '');
@@ -116,6 +138,11 @@ export class ManagerComponent implements OnInit {
     });
     this.socketService.listen('setchannel').subscribe((data)=>{
        this.currentChannel = data;
+    });
+    this.socketService.listen('kick').subscribe((data)=>{
+      if(this.username == data){
+       logout();
+     }
     });
     this.socketService.listen('setassis').subscribe((data)=>{
       if(data == 0){
@@ -144,10 +171,15 @@ export class ManagerComponent implements OnInit {
         this.isAssis = false;
       }
     });
+    this.socketService.listen('setassisforgrp').subscribe((data)=>{
+      if(this.currentGroup == data[0]){
+        this.isAssis = (data[1] == 1);
+      }
+    });
     this.socketService.listen('refreshchannels').subscribe((data)=>{
       if(data[0] == this.currentGroup){
         this.channels = [];
-        this.socketService.send('refreshchannels', [data[0], data[1]]);
+        this.socketService.send('refreshchannels', [data[0], this.username]);
       }
     });
     this.socketService.listen('showchannels').subscribe((data)=>{

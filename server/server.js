@@ -46,6 +46,12 @@ io.on('connection', function(socket){
       }
     }
   });
+  socket.on("createuser", function(data){
+    createUser(data[1], '', 0);
+  });
+  socket.on("deleteuser", function(data){
+    deleteUser(data[1]);
+  });
   socket.on("selectchannel", function(data){
     socket.emit("setchannel", data[1]);
   });
@@ -61,33 +67,78 @@ io.on('connection', function(socket){
     grpjson = JSON.stringify(getGroupNames());
     io.emit("showgroups", grpjson);
   });
+  socket.on("removechannel", function(data){
+    //add group and send back to clients
+    removeChannel(data[1], data[2]);
+  });
+  socket.on("givesuper", function(data){
+    //add group and send back to clients
+    usr = getUserByName(data[1]);
+    if(usr == null){
+      usr = createUser(data[1], '', 0);
+    }
+    usr.perms = 2;
+    sendToUser(data[1], 'setperms', 2);
+  });
+  socket.on("givegroupadmin", function(data){
+    //add group and send back to clients
+    usr = getUserByName(data[1]);
+    if(usr == null){
+      usr = createUser(data[1], '', 0);
+    }
+    usr.perms = 1;
+    sendToUser(data[1], 'setperms', 1);
+    //socket.emit('setperms', [data[1], 1]);
+  });
+  socket.on("giveassis", function(data){
+    //add group and send back to clients
+    grp = getGroupByName(data[1]);
+    usr = getUserByName(data[2]);
+    if(usr == null){
+      usr = createUser(data[2], '', 0);
+    }
+    grp.addAssis(usr);
+    //socket.emit('setperms', [data[1], 1]);
+  });
   socket.on("createchannel", function(data){
     //add group and send back to clients
     createChannel(data[0], data[1]);
-    console.log("Group name "+data[0]);
-    console.log("Channel name "+data[1]);
     group = getGroupByName(data[0]);
     usr = getUserByName(data[2]);
-    //channel_list = group.getChannelNamesForUser(usr);
-    console.log(channel_list);
     io.emit("refreshchannels", [data[0], data[2]]);
   });
   socket.on("refreshchannels", function(data){
     //add group and send back to clients
     group = getGroupByName(data[0]);
-    usr = getUserByName(data[1]);
-    rawlist = group.getChannelNamesForUser(usr);
-    channel_list = JSON.stringify(rawlist);
-    console.log(channel_list);
-    socket.emit("showchannels", channel_list);
+    if(group != null){
+      usr = getUserByName(data[1]);
+      rawlist = group.getChannelNamesForUser(usr);
+      channel_list = JSON.stringify(rawlist);
+      console.log(channel_list);
+      socket.emit("showchannels", channel_list);
+    }
   });
-  socket.on("adduser", function(data){
+  socket.on("addfulluser", function(data){
     //add group and send back to clients
     var user = createUser(data.name, data.email, data.perms);
   });
+  socket.on("addtochannel", function(data){
+    var grp = getGroupByName(data[1]);
+    var chan = data[2];
+    var user = getUserByName(data[3]);
+    if(user == null){
+      user = createUser(data[3], '', 0);
+    }
+    grp.addUserToChannel(user, chan);
+  });
+  socket.on("removefromchannel", function(data){
+    var grp = getGroupByName(data[1]);
+    var chan = data[2];
+    grp.removeUserFromChannel(data[3], chan);
+  });
   socket.on("msg", function(data){
     //add group and send back to clients
-    var group = this.getGroupByName(data.group);
+    var group = getGroupByName(data.group);
     var channel = group.getChannelByName(data.channel);
     channel.messages.push(data.text);
     io.emit("msg", [group.name, channel.name, data.text]);
@@ -99,7 +150,25 @@ function sendToUser(name, packetID, msg){
   var id = 0;
   if(user != null){
     id = user.id;
-    io.to(id).emit(packetID, msg);
+    if(id != 0){
+      io.to(id).emit(packetID, msg);
+    }else{
+      console.log("Tried to send packet to offline user.");
+    }
+  }
+}
+
+function deleteUser(name){
+  io.emit('kick', name);
+  var index = -1;
+  for (var i = 0; i < this.users.length; i++) {
+    var u = this.users[i];
+    if(u.name == name){
+      index = 1;
+    }
+  }
+  if(index > -1){
+    this.users.splice(index, 1);
   }
 }
 
@@ -114,6 +183,25 @@ function removeGroup(name){
   }
   io.emit('kickfromgroup', name);
   this.groups.splice(index, 1);
+}
+
+function removeChannel(groupname, channelname){
+  var grp = getGroupByName(groupname);
+  var index_g = -1, index_c = -1;
+  for (var i = 0; i < this.groups.length; i++) {
+    grp = this.groups[i];
+    if(grp.name == groupname){
+      for (var j = 0; j < grp.channelList.length; j++) {
+        index_g = i;
+        var ch = grp.channelList[j];
+        if(ch.name == channelname){
+          index_c = j;
+        }
+      }
+    }
+  }
+  this.io.emit('kickfromchannel', [groupname, channelname]);
+  this.groups[index_g].channelList.splice(index_c, 1);
 }
 
 function getGroupChannelsForUser(username, groupname){
@@ -187,6 +275,46 @@ class Group{
     return false;
   }
 
+  addAssis(user){
+    if(this.isAssis(user.name) == false){
+      this.assisList.push(user);
+    }
+    sendToUser(user.name, 'setassisforgrp', [this.name, 1]);
+  }
+
+  addUserToChannel(user, channel){
+    var exists = false;
+    var ch = this.getChannelByName(channel);
+    if(ch != null){
+      for (var i = 0; i < ch.users.length; i++) {
+        var u = ch.users[i];
+        if(u.name == user.name){
+          exists = true;
+        }
+      }
+    }
+    if(!exists && ch != null){
+      ch.users.push(user);
+    }
+  }
+
+  removeUserFromChannel(username, channel){
+    var index = -1;
+    var ch = getChannelByName(channel);
+    if(ch != null){
+      for (var i = 0; i < ch.users.length; i++) {
+        var u = ch.users[i];
+        if(u.name == username){
+          index = i;
+        }
+      }
+    }
+    if(index > -1 && ch != null){
+      ch.users.splice(index, 1);
+    }
+    io.emit('refreshchannels', [this.name, username]);
+  }
+
   getChannelNamesForUser(user){
     var ret = [];
     if(this.channelList.length > 0){
@@ -210,17 +338,11 @@ class Group{
 
   getChannelByName(name){
     for (var i = 0; i < this.channelList.length; i++) {
-      if(this.channelList[i] == name){
+      if(this.channelList[i].name == name){
         return this.channelList[i];
       }
     }
   }
-}
-
-function addToGroup(username, groupname){
-  var group = getGroupByName(groupname);
-  var user = getUserByName(username);
-  group.users.push(user);
 }
 
 groups = [];
@@ -284,8 +406,4 @@ class Channel{
     this.users = [];
     this.messages = [];
   }
-}
-
-function doLogin(name, email){
-
 }

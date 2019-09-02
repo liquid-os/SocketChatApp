@@ -28,7 +28,7 @@
           </div>
           <div *ngIf="channels.length <= 0">
             <label>Select a Channel: </label>
-              You do not have permission to enter any channels in this group.
+              This group has no channels - or you don't have permission to view them!
               <br>
             </div>
           <div>
@@ -89,7 +89,7 @@
   </div>
   <div *ngIf="(isAssis || perms>0)" style="width:100%;height:60px;border:2px solid #000;">
     <div>
-      <font size = "5">Channel Manager [{{currentGroup}}/{{currentChannel}}] </font>
+      <font size = "5">Channel Manager [{{currentGroup}}] </font>
       <input [(ngModel)]="text_channel" name="text_channel" class="input"/>
       <div *ngIf="text_channel!=''">
         <button (click)="createChannel()">Create Channel</button>
@@ -97,24 +97,28 @@
       </div>
     </div>
   </div>
-  <div *ngIf="(isAssis || perms>0)" style="width:100%;height:160px;border:2px solid #000;">
+  <div *ngIf="(isAssis || perms>0)" style="width:100%;height:180px;border:2px solid #000;">
     <div>
       <font size = "5">User Manager [{{currentGroup}}/{{currentChannel}}]</font>
       <input [(ngModel)]="text_user" name="text_user" class="input"/>
+      <br>
       <div *ngIf="currentChannel!='' && text_user!=''">
         <button (click)="addUserToChannel()">Add To {{currentChannel}}</button>
         <button (click)="removeUserFromChannel()">Remove From {{currentChannel}}</button>
       </div>
+      <br>
       <div *ngIf="text_user!='' && perms >= 2">
-        <button (click)="promoteToSuper()">Promote User to Super Admin</button>
+        <button (click)="giveSuperAdmin()">Promote User to 'Super Admin' Role</button>
         <button (click)="deleteUser()">Delete User</button>
       </div>
+      <br>
       <div *ngIf="text_user!='' && perms >= 1">
         <button (click)="createUser()">Create User</button>
-        <button (click)="promoteToGroup()">Promote User to Group Admin</button>
+        <button (click)="giveGroupAdmin()">Promote User to 'Group Admin' Role</button>
       </div>
+      <br>
       <div *ngIf="text_user!='' && (perms >= 1 || isAssis)">
-        <button (click)="giveGroupAssis()">Promote User to Group Assis</button>
+        <button (click)="giveGroupAssis()">Promote User to Group Assis {{currentGroup}}</button>
       </div>
     </div>
   </div>
