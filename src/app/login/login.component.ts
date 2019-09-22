@@ -12,6 +12,7 @@ export class LoginComponent implements OnInit {
 
   email : string;
   username : string;
+  password : string;
 
   constructor(private socketService : WebSocketService, private router : Router) { }
 
@@ -19,14 +20,21 @@ export class LoginComponent implements OnInit {
     this.socketService.listen('login').subscribe((data)=>{
       localStorage.setItem('username', data[0]);
       localStorage.setItem('perms', data[1]);
-      console.log(data[0]);
-      console.log(data[1]);
       this.router.navigate(['/', 'manager']);
+    });
+    this.socketService.listen('unauth').subscribe((data)=>{
+      alert("Invalid password for existing user "+data+"! Please log in again.");
+      this.username = "";
+      this.email = "";
+      this.password = "";
     });
   }
 
   login(){
-    this.socketService.send('login', [this.username, this.email]);
+    if(this.password == "" || this.username == ""){
+      alert("Please fill in all of the required fields.");
+    }else
+    this.socketService.send('login', [this.username, this.email, this.password]);
   }
 
 }

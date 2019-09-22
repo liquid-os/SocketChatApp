@@ -141,7 +141,7 @@ export class ManagerComponent implements OnInit {
     });
     this.socketService.listen('kick').subscribe((data)=>{
       if(this.username == data){
-       logout();
+       this.logout();
      }
     });
     this.socketService.listen('setassis').subscribe((data)=>{

@@ -2,10 +2,7 @@
 
 var bodyParser = require('body-parser')
 var express = require('express');
-
-
 var app = express();
-
 var server = app.listen(3000);
 
 // Init socket.io service
@@ -13,19 +10,34 @@ io = require('socket.io').listen(server);
 
 console.log("Express server started.");
 
+var MongoClient = require('mongodb').MongoClient;
+var DB_NAME = "chat"
+var url = "mongodb://localhost:27017/";
+
 // This is the most important section in the server. Inside this io.on call, all the message
 // handlers are established for the different kinds of packets that the server is ser up to receive.
 io.on('connection', function(socket){
   socket.on("login", function(data){
-    user = createUser(data[0], data[1], 0);
-    createdUser = getUserByName(data[0]);
-    createdUser.id = socket.id;
-    console.log(data.username);
-    console.log(data.email);
-    console.log(socket.id);
-    console.log(createdUser.id);
-    console.log(createdUser.perms);
-    socket.emit("login", [createdUser.name, createdUser.perms]);
+    exists = userExists(data[0]);
+    if(exists){
+      user = getUserByName(data[0]);
+      if(user.pword == ""){
+        user.pword = data[2];
+        socket.emit("login", [user.name, user.perms]);
+      }else{
+        if(user.pword == data[2]){
+          socket.emit("login", [user.name, user.perms]);
+        }else{
+          socket.emit("unauth", [user.name]);
+        }
+      }
+    }else{
+      user = createUser(data[0], data[1], 0);
+      createdUser = getUserByName(data[0]);
+      createdUser.id = socket.id;
+      createdUser.pword = data[2];
+      socket.emit("login", [createdUser.name, createdUser.perms]);
+    }
   });
   socket.on("populate", function(data){
     grpjson = JSON.stringify(getGroupNames());
@@ -49,6 +61,14 @@ io.on('connection', function(socket){
   });
   socket.on("deleteuser", function(data){
     deleteUser(data[1]);
+  });
+  socket.on("message", function(data){
+    usr = data[0];
+    grpname = data[1];
+    chname = data[2];
+    msg = data[3];
+    var chan = getGroupByName(grpname).getChannelByName(chname);
+    chan.sendToChannel(usr, msg);
   });
   socket.on("selectchannel", function(data){
     socket.emit("setchannel", data[1]);
@@ -132,6 +152,39 @@ io.on('connection', function(socket){
     io.emit("msg", [group.name, channel.name, data.text]);
   });
 });
+
+function dbInsert(data){
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db(DB_NAME);
+    dbo.collection(table, function (err, collection) {
+          collection.insertOne(data);
+      });
+  });
+}
+
+function dbUpdate(condition, qry){
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db(DB_NAME);
+    dbo.collection(table, function (err, collection) {
+          collection.updateOne(
+            {condition},
+            {qry}
+          );
+      });
+  });
+}
+
+function dbDelete(qry, table){
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db(DB_NAME);
+    dbo.collection(table, function (err, collection) {
+          collection.remove(qry, true);
+      });
+  });
+}
 
 // Sends a message to a specific user identified by their name
 function sendToUser(name, packetID, msg){
@@ -255,8 +308,15 @@ class User{
   constructor(name, email, perms){
     this.name = name;
     this.id = 0;
+    this.pword = "";
     this.email = email;
     this.perms = perms;
+  }
+
+// Sets the password for this user
+  setPass(pword){
+    this.pword = pword;
+    return this;
   }
 }
 
@@ -370,14 +430,31 @@ function createGroup(name){
   this.groups.push(group);
 }
 
+function userExists(name){
+  var existing = getUserByName(name);
+  if(existing == null){
+    return false;
+  }else{
+    return true;
+  }
+}
+
+function setPerms(usrname, perm){
+  var u = getUserByName(usrname);
+  u.perms = perm;
+
+}
+
 // Creates a new user with the given parameters (unless one exists already
 // with a matching name, in which case the function will return that user).
-function createUser(name, email, perms){
+function createUser(name, email, perms, pass){
   var existing = getUserByName(name);
   if(existing == null){
     console.log("Creating new user "+name);
     new_user = new User(name, email, perms);
+    new_user.password = pass;
     this.users.push(new_user);
+    dbInsert("chat", "Users", {username: name, emailaddr: email, permmissions: perms, password: pass});
     return new_user;
   }else{
     return existing;
@@ -422,5 +499,14 @@ class Channel{
     this.group = group;
     this.users = [];
     this.messages = [];
+    this.currentUsers = [];
+  }
+
+  sendToChannel(usrname, txt){
+    dbInsert("chat", "MessageHistory", {grp: this.group.name, chan: this.name, usr: usrname, msg: txt});
+    for (var i = 0; i < this.currentUsers.length; i++) {
+      var u = this.currentUsers[i];
+      sendToUser(u.name, "msg", [usrname, txt]);
+    }
   }
 }
