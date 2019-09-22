@@ -72,6 +72,7 @@ io.on('connection', function(socket){
   });
   socket.on("selectchannel", function(data){
     socket.emit("setchannel", data[1]);
+
   });
   socket.on("creategroup", function(data){
     createGroup(data);
@@ -184,6 +185,17 @@ function dbDelete(qry, table){
           collection.remove(qry, true);
       });
   });
+}
+
+function dbSelect(qry, table){
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db(DB_NAME);
+    dbo.collection(table, function (err, collection) {
+          return collection.find(qry);
+      });
+  });
+  return null;
 }
 
 // Sends a message to a specific user identified by their name
