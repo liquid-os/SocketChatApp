@@ -14,6 +14,9 @@ var MongoClient = require('mongodb').MongoClient;
 var DB_NAME = "chat"
 var url = "mongodb://localhost:27017/";
 
+groups = [];
+users = [];
+
 // This is the most important section in the server. Inside this io.on call, all the message
 // handlers are established for the different kinds of packets that the server is ser up to receive.
 io.on('connection', function(socket){
@@ -32,7 +35,7 @@ io.on('connection', function(socket){
         }
       }
     }else{
-      user = createUser(data[0], data[1], 0);
+      user = createUser(data[0], data[1], 0, data[2]);
       createdUser = getUserByName(data[0]);
       createdUser.id = socket.id;
       createdUser.pword = data[2];
@@ -74,9 +77,9 @@ io.on('connection', function(socket){
     deleteUser(data[1]);
   });
   socket.on("message", function(data){
-    usr = data[0];
-    grpname = data[1];
-    chname = data[2];
+    usr = data[2];
+    grpname = data[0];
+    chname = data[1];
     msg = data[3];
     var chan = getGroupByName(grpname).getChannelByName(chname);
     chan.sendToChannel(usr, msg, false);
@@ -91,7 +94,10 @@ io.on('connection', function(socket){
   });
   socket.on("selectchannel", function(data){
     socket.emit("setchannel", data[1]);
-
+    var chan = getGroupByName(data[2]).getChannelByName(data[1]);
+    for (var i = 0; i < chan.messages.length; i++) {
+      socket.emit("message", [data[0], data[2], data[1], chan.messages[i]]);
+    }
   });
   socket.on("creategroup", function(data){
     createGroup(data);
@@ -131,6 +137,7 @@ io.on('connection', function(socket){
     grp.addAssis(usr);
   });
   socket.on("createchannel", function(data){
+    console.log("Creating channel "+data[0]+"/"+data[1]);
     createChannel(data[0], data[1]);
     group = getGroupByName(data[0]);
     usr = getUserByName(data[2]);
@@ -143,7 +150,6 @@ io.on('connection', function(socket){
       usr = getUserByName(data[1]);
       rawlist = group.getChannelNamesForUser(usr);
       channel_list = JSON.stringify(rawlist);
-      console.log(channel_list);
       socket.emit("showchannels", channel_list);
     }
   });
@@ -174,41 +180,66 @@ io.on('connection', function(socket){
 });
 
 function loadUsers(){
-  query = dbSelect("", "users");
+  var cursor = dbSelect("", "users", function(doc){
+    usr = new User();
+    usr.name = doc.username;
+    usr.password = doc.password;
+    usr.email = doc.emailaddr;
+    usr.perms = doc.permissions;
+    this.users.push(usr);
+    console.log(usr.name+", "+usr.password+", "+usr.email+", "+usr.perms);
+  });
 }
 
+
 function loadGroups(){
-  query = dbSelect("", "groups");
+  var cursor = dbSelect("", "groups", function(doc){
+    grp = new Group();
+    grp.name = doc.name;
+    var cursor_assis = dbSelect({groupname: grp.name}, "group_assis", function(doc_1){
+      grp.assisList.push(getUserByName(doc_1.username));
+    });
+    groups.push(grp);
+  });
 }
 
 function loadChannels(){
-  query = dbSelect("", "channels");
-  for (var i = 0; i < query.length; i++) {
-    var row = query[i];
-  }
+  var cursor = dbSelect("", "channels", function(doc){
+    chan = new Channel();
+    chan.name = doc.name;
+    chan.group = getGroupByName(doc.group);
+    if(chan.group != null){
+      var cursor_users = dbSelect({channelname: chan.name}, "channel_users", function(doc_1){
+        var channel = getGroupByName(doc.group).getChannelByName(doc.name);
+        channel.users.push(getUserByName(doc_1.username));
+      });
+      var cursor_groups = dbSelect({channelname: doc.name, groupname: doc.group}, "messages", function(doc_1){
+        var channel = getGroupByName(doc.group).getChannelByName(doc.name);
+        channel.messages.push((doc_1.username +": "+doc_1.text));
+      });
+      chan.group.channelList.push(chan);
+    }else{
+      console.log("Channel "+chan.name+" has missing parent!");
+    }
+  });
 }
 
-function loadChannelUsers(chname){
-  query = dbSelect({chan: chname}, "channel_users");
-  for (var i = 0; i < query.length; i++) {
-    var row = query[i];
-  }
-}
 
 function dbInsert(data, table){
-  MongoClient.connect(url, function(err, db) {
+  MongoClient.connect(url, { useNewUrlParser: true }, function(err, db) {
     if (err) throw err;
     var dbo = db.db(DB_NAME);
     dbo.collection(table, function (err, collection) {
           collection.insertOne(data);
       });
+      db.close();
   });
 }
 
-function dbUpdate(condition, qry){
+function dbUpdate(condition, qry, table){
   MongoClient.connect(url, { useNewUrlParser: true }, function(err, client) {
-      var dbo = db.db("dbName");
-      dbo.collection("colName", function(err, collection) {
+      var dbo = db.db(DB_NAME);
+      dbo.collection(table, function(err, collection) {
           collection.updateMany(condition, { $set: qry }, function(err, result) {
               db.close();
           });
@@ -217,22 +248,28 @@ function dbUpdate(condition, qry){
 }
 
 function dbDelete(qry, table){
-  MongoClient.connect(url, function(err, db) {
+  MongoClient.connect(url, { useNewUrlParser: true }, function(err, db) {
     if (err) throw err;
     var dbo = db.db(DB_NAME);
     dbo.collection(table, function (err, collection) {
           collection.remove(qry, true);
       });
+      db.close();
   });
 }
 
-function dbSelect(qry, table){
-  MongoClient.connect(url, function(err, db) {
+function dbSelect(qry, table, foreach){
+  MongoClient.connect(url, { useNewUrlParser: true }, function(err, db) {
     if (err) throw err;
     var dbo = db.db(DB_NAME);
     dbo.collection(table, function (err, collection) {
-          return collection.find(qry);
+          if(qry == ""){
+            collection.find().forEach(foreach);
+          }else{
+            collection.find(qry).forEach(foreach);
+          }
       });
+      db.close();
   });
   return null;
 }
@@ -343,8 +380,9 @@ function createChannel(groupname, name){
   if(exist == false && grp != null){
     ch = new Channel(name, groupname);
     grp.channelList.push(ch);
-    //TODO INSERT CHANNEL
-    dbInsert({}, "channels");
+    //Insert new channel
+    dbInsert({name: name, group: groupname}, "channels");
+    console.log("inserted channel ");
     return ch;
   }
 }
@@ -401,7 +439,7 @@ class Group{
     }
     sendToUser(user.name, 'setassisforgrp', [this.name, 1]);
     //TODO ADD ASSIS TO DB
-    // dbInsert({usr: user.name, group: this.name}, "group_assis");
+    dbInsert({username: user.name, groupname: this.name}, "group_assis");
   }
 
   // Adds the given user to the given channel for this group
@@ -419,8 +457,7 @@ class Group{
     if(!exists && ch != null){
       ch.users.push(user);
     }
-    //TODO ADD USER TO CHANNELUSERS
-    //dbInsert({usr: user.name, chan: ch.name}, "channel_users");
+    dbInsert({groupname: this.name, channelname: channel, username: user.name}, "channel_users");
   }
 
   // Removes the user with the given name from the given channel for this group
@@ -439,8 +476,7 @@ class Group{
       ch.users.splice(index, 1);
     }
     io.emit('refreshchannels', [this.name, username]);
-    //TODO DELETE USER FROM CHANNELUSERS
-    //dbDelete({usr: username, "channel_users"});
+    dbDelete({groupname: this.name, channelname: channel, username: username}, "channel_users");
   }
 
   // Returns a list of channel names for the given user, for this group
@@ -448,7 +484,7 @@ class Group{
     var ret = [];
     if(this.channelList.length > 0){
       for (var i = 0; i < this.channelList.length; i++) {
-        ch = this.channelList[i];
+        var ch = this.channelList[i];
         if(ch != null){
           var valid = false;
           for (var j = 0; j < ch.users.length; j++) {
@@ -476,20 +512,11 @@ class Group{
   }
 }
 
-groups = [];
-users = [];
-
-createGroup("General");
-createGroup("Test");
-createGroup("Admin");
-createGroup("Help");
-
-u = createUser('super', 'xyz@gmail.com', 2);
-
 // Creates a new Group object and pushes it to the global group list
 function createGroup(name){
   var group = new Group(name);
   this.groups.push(group);
+  dbInsert({name: name}, "groups");
 }
 
 function userExists(name){
@@ -504,7 +531,7 @@ function userExists(name){
 function setPerms(usrname, perm){
   var u = getUserByName(usrname);
   u.perms = perm;
-
+  dbUpdate({name: usrname}, {permissions: perm}, "users");
 }
 
 // Creates a new user with the given parameters (unless one exists already
@@ -516,7 +543,7 @@ function createUser(name, email, perms, pass){
     new_user = new User(name, email, perms);
     new_user.password = pass;
     this.users.push(new_user);
-    dbInsert("chat", "Users", {username: name, emailaddr: email, permmissions: perms, password: pass});
+    dbInsert({username: name, emailaddr: email, permissions: perms, password: pass}, "users");
     return new_user;
   }else{
     return existing;
@@ -565,14 +592,17 @@ class Channel{
   }
 
   sendToChannel(usrname, txt, raw){
-    dbInsert("messages", {grp: this.group.name, chan: this.name, usr: usrname, msg: txt});
-    for (var i = 0; i < this.users.length; i++) {
-      var u = this.users[i];
-      if(raw){
-        sendToUser(u.name, "message", [usrname, this.group.name, this.name, txt]);
-      }else{
-        sendToUser(u.name, "message", [usrname, this.group.name, this.name, (usrname+": "+txt)]);
-      }
+    console.log("sending "+txt+" to "+this.name);
+    if(raw){
+      io.emit("message", [usrname, this.group.name, this.name, txt]);
+    }else{
+      io.emit("message", [usrname, this.group.name, this.name, (usrname+": "+txt)]);
+      this.messages.push((usrname+": "+txt));
+      dbInsert({groupname: this.group.name, channelname: this.name, username: usrname, text: txt}, "messages");
     }
   }
 }
+
+loadUsers();
+loadGroups();
+loadChannels();

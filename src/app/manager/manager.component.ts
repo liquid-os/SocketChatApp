@@ -35,11 +35,12 @@ export class ManagerComponent implements OnInit {
   }
 
   selectChannel(){
-    this.socketService.send("selectchannel", [this.username, this.selectedChannel]);
+    this.socketService.send("selectchannel", [this.username, this.selectedChannel, this.currentGroup]);
   }
 
   sendMessage(){
     // TODO
+    this.socketService.send("message", [this.currentGroup, this.currentChannel, this.username, this.text_msg]);
   }
 
   createGroup(){
@@ -59,7 +60,7 @@ export class ManagerComponent implements OnInit {
       this.text_group = "";
     }
   }
-
+  
   createChannel(){
     this.socketService.send("createchannel", [this.currentGroup, this.text_channel, this.username]);
     this.text_channel = "";
@@ -81,7 +82,7 @@ export class ManagerComponent implements OnInit {
   }
 
   clearMessages(){
-    this.messages.clear();
+    this.messages.length = 0;
   }
 
   logout(){
@@ -141,18 +142,18 @@ export class ManagerComponent implements OnInit {
       if(this.currentGroup != data){
         this.currentGroup = data;
         this.currentChannel = "";
-        clearMessages();
+        this.clearMessages();
       }
     });
     this.socketService.listen('setchannel').subscribe((data)=>{
        this.currentChannel = data;
        this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has joined the chat."]);
-       clearMessages();
+       this.clearMessages();
     });
     this.socketService.listen('kick').subscribe((data)=>{
       if(this.username == data){
        this.logout();
-       clearMessages();
+       this.clearMessages();
      }
     });
     this.socketService.listen('setassis').subscribe((data)=>{
@@ -169,12 +170,12 @@ export class ManagerComponent implements OnInit {
     this.socketService.listen('kickfromgroup').subscribe((data)=>{
       if(this.currentGroup == data){
         alert("You have been kicked from the group!");
-        if(currentChannel != ""){
+        if(this.currentChannel != ""){
           this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has left the chat."]);
         }
         this.currentGroup = "";
         this.currentChannel = "";
-        clearMessages();
+        this.clearMessages();
         this.isAssis = false;
       }
     });
@@ -184,7 +185,7 @@ export class ManagerComponent implements OnInit {
         this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has left the chat."]);
         this.currentGroup = "";
         this.currentChannel = "";
-        clearMessages();
+        this.clearMessages();
         this.isAssis = false;
       }
     });
@@ -202,7 +203,7 @@ export class ManagerComponent implements OnInit {
       if(data[0] == this.currentGroup){
         this.channels = [];
         this.socketService.send('refreshchannels', [data[0], this.username]);
-        clearMessages();
+        this.clearMessages();
       }
     });
     this.socketService.listen('showchannels').subscribe((data)=>{
