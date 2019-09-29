@@ -52,6 +52,11 @@
         <label>Type a Message: </label>
           <input [(ngModel)]="text_msg" name="text_msg" class="input"/>
           <button (click)="sendMessage()">Send Message</button>
+          <ul>
+            <li *ngFor = "let msg of messages">
+              {{msg}}
+            </li>
+          </ul>
       </div>
     </div>
 </div>

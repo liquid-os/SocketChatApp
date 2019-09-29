@@ -15,6 +15,8 @@ export class ManagerComponent implements OnInit {
   channels = [];
   username = "";
 
+  messages = [];
+
 
   selectedGroup = "";
   selectedChannel = "";
@@ -78,7 +80,12 @@ export class ManagerComponent implements OnInit {
     this.text_channel = "";
   }
 
+  clearMessages(){
+    this.messages.clear();
+  }
+
   logout(){
+    this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has left the chat."]);
     localStorage.setItem('username', "");
     localStorage.setItem('perms', '0');
     this.router.navigate(['/', 'login']);
@@ -134,14 +141,18 @@ export class ManagerComponent implements OnInit {
       if(this.currentGroup != data){
         this.currentGroup = data;
         this.currentChannel = "";
+        clearMessages();
       }
     });
     this.socketService.listen('setchannel').subscribe((data)=>{
        this.currentChannel = data;
+       this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has joined the chat."]);
+       clearMessages();
     });
     this.socketService.listen('kick').subscribe((data)=>{
       if(this.username == data){
        this.logout();
+       clearMessages();
      }
     });
     this.socketService.listen('setassis').subscribe((data)=>{
@@ -158,16 +169,22 @@ export class ManagerComponent implements OnInit {
     this.socketService.listen('kickfromgroup').subscribe((data)=>{
       if(this.currentGroup == data){
         alert("You have been kicked from the group!");
+        if(currentChannel != ""){
+          this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has left the chat."]);
+        }
         this.currentGroup = "";
         this.currentChannel = "";
+        clearMessages();
         this.isAssis = false;
       }
     });
     this.socketService.listen('kickfromchannel').subscribe((data)=>{
       if(this.currentGroup == data[0] && this.currentChannel == data[1]){
         alert("You have been kicked from the channel!");
+        this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has left the chat."]);
         this.currentGroup = "";
         this.currentChannel = "";
+        clearMessages();
         this.isAssis = false;
       }
     });
@@ -176,10 +193,16 @@ export class ManagerComponent implements OnInit {
         this.isAssis = (data[1] == 1);
       }
     });
+    this.socketService.listen('message').subscribe((data)=>{
+      if(this.currentGroup == data[1] && this.currentChannel == data[2]){
+        this.messages.push(data[3]);
+      }
+    });
     this.socketService.listen('refreshchannels').subscribe((data)=>{
       if(data[0] == this.currentGroup){
         this.channels = [];
         this.socketService.send('refreshchannels', [data[0], this.username]);
+        clearMessages();
       }
     });
     this.socketService.listen('showchannels').subscribe((data)=>{
