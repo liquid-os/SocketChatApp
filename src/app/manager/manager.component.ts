@@ -60,7 +60,7 @@ export class ManagerComponent implements OnInit {
       this.text_group = "";
     }
   }
-  
+
   createChannel(){
     this.socketService.send("createchannel", [this.currentGroup, this.text_channel, this.username]);
     this.text_channel = "";
@@ -83,6 +83,10 @@ export class ManagerComponent implements OnInit {
 
   clearMessages(){
     this.messages.length = 0;
+  }
+
+  uploadAvatar(){
+    this.socketService.send('uploadavatar', { image: true, buffer: buf.toString('base64') });
   }
 
   logout(){

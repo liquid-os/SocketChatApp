@@ -4,6 +4,10 @@ var bodyParser = require('body-parser')
 var express = require('express');
 var app = express();
 var server = app.listen(3000);
+var siofu = require("socketio-file-upload");
+var app = express()
+    .use(siofu.router)
+    .listen(8000);
 
 // Init socket.io service
 io = require('socket.io').listen(server);
@@ -20,12 +24,14 @@ users = [];
 // This is the most important section in the server. Inside this io.on call, all the message
 // handlers are established for the different kinds of packets that the server is ser up to receive.
 io.on('connection', function(socket){
+  var uploader = new siofu();
+  uploader.dir = "../src/assets";
+  uploader.listen(socket);
   socket.on("login", function(data){
     exists = userExists(data[0]);
     if(exists){
       user = getUserByName(data[0]);
       if(user.pword == ""){
-        user.pword = data[2];
         socket.emit("login", [user.name, user.perms]);
       }else{
         if(user.pword == data[2]){
@@ -197,7 +203,7 @@ function loadGroups(){
     grp = new Group();
     grp.name = doc.name;
     var cursor_assis = dbSelect({groupname: grp.name}, "group_assis", function(doc_1){
-      grp.assisList.push(getUserByName(doc_1.username));
+      getGroupByName(doc_1.groupname).assisList.push(getUserByName(doc_1.username));
     });
     groups.push(grp);
   });
