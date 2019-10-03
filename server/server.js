@@ -252,7 +252,7 @@ function dbInsert(data, table){
 }
 
 function dbUpdate(condition, qry, table){
-  MongoClient.connect(url, { useNewUrlParser: true }, function(err, client) {
+  MongoClient.connect(url, { useNewUrlParser: true }, function(err, db) {
       var dbo = db.db(DB_NAME);
       dbo.collection(table, function(err, collection) {
           collection.updateMany(condition, { $set: qry }, function(err, result) {
@@ -620,5 +620,3 @@ class Channel{
 loadUsers();
 loadGroups();
 loadChannels();
-
-createUser('super', 'xyz@gmail.com', 2, '123');

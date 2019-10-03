@@ -39,7 +39,6 @@ export class ManagerComponent implements OnInit {
   }
 
   sendMessage(){
-    // TODO
     this.socketService.send("message", [this.currentGroup, this.currentChannel, this.username, this.text_msg]);
   }
 

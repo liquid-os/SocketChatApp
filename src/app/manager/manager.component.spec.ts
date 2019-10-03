@@ -19,10 +19,6 @@ describe('ManagerComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create component', () => {
-    expect(component).toBeTruthy();
-  });
-
   it('should have no channel after leaving channel', () =>{
     component.leaveChannel();
     expect(component.currentChannel).toBe("");
