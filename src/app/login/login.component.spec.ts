@@ -19,7 +19,18 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create component', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should report when all fields are not filled', () => {
+    expect(component.allFieldsFilled()).toBeTruthy();
+  });
+
+  it('should report when all fields are filled', () => {
+    component.username = "test";
+    component.password = "test";
+    component.email = "test@test.test";
+    expect(component.allFieldsFilled()).toBeTruthy();
   });
 });

@@ -30,11 +30,18 @@ export class LoginComponent implements OnInit {
     });
   }
 
+  allFieldsFilled(){
+    if(this.email == "" || this.username == "" || this.password == ""){
+      return false;
+    }else{
+      return true;
+    }
+  }
+
   login(){
-    if(this.password == "" || this.username == ""){
+    if(this.allFieldsFilled() == false){
       alert("Please fill in all of the required fields.");
     }else
     this.socketService.send('login', [this.username, this.email, this.password]);
   }
-
 }

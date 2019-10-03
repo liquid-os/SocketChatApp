@@ -1,16 +1,29 @@
-import { AppPage } from './app.po';
+import { LoginPage } from './app.po';
+import { MainPage } from './app.po';
 import { browser, logging } from 'protractor';
 
-describe('workspace-project App', () => {
-  let page: AppPage;
+describe('socket-chat App', () => {
+  let login_page: LoginPage;
+  let main_page: MainPage;
 
   beforeEach(() => {
-    page = new AppPage();
+    login_page = new LoginPage();
+    login_page = new MainPage();
   });
 
-  it('should display welcome message', () => {
-    page.navigateTo();
-    expect(page.getTitleText()).toEqual('Welcome to assignment1!');
+  it('should display welcome', () => {
+    login_page.navigateTo();
+    expect(login_page.getHeadingText()).toEqual('Welcome!');
+  });
+
+  it('should display login message', () => {
+    login_page.navigateTo();
+    expect(login_page.getLoginMessage()).toEqual('Please Log In Below:');
+  });
+
+  it('should contain login button', () => {
+    login_page.navigateTo();
+    expect(login_page.getLoginButton()).getText().toEqual('Login');
   });
 
   afterEach(async () => {

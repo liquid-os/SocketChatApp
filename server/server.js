@@ -32,7 +32,12 @@ io.on('connection', function(socket){
     if(exists){
       user = getUserByName(data[0]);
       if(user.pword == ""){
-        socket.emit("login", [user.name, user.perms]);
+        if(data[2] == ""){
+          socket.emit("unauth", [user.name]);
+        }else{
+          socket.emit("login", [user.name, user.perms]);
+          dbUpdate({username: user.name}, {password: data[2]}, "users");
+        }
       }else{
         if(user.pword == data[2]){
           socket.emit("login", [user.name, user.perms]);
@@ -41,11 +46,15 @@ io.on('connection', function(socket){
         }
       }
     }else{
-      user = createUser(data[0], data[1], 0, data[2]);
-      createdUser = getUserByName(data[0]);
-      createdUser.id = socket.id;
-      createdUser.pword = data[2];
-      socket.emit("login", [createdUser.name, createdUser.perms]);
+      if(data[2] == ""){
+        socket.emit("unauth", [user.name]);
+      }else{
+        user = createUser(data[0], data[1], 0, data[2]);
+        createdUser = getUserByName(data[0]);
+        createdUser.id = socket.id;
+        createdUser.pword = data[2];
+        socket.emit("login", [createdUser.name, createdUser.perms]);
+      }
     }
   });
   socket.on("populate", function(data){
@@ -388,7 +397,6 @@ function createChannel(groupname, name){
     grp.channelList.push(ch);
     //Insert new channel
     dbInsert({name: name, group: groupname}, "channels");
-    console.log("inserted channel ");
     return ch;
   }
 }
@@ -612,3 +620,5 @@ class Channel{
 loadUsers();
 loadGroups();
 loadChannels();
+
+createUser('super', 'xyz@gmail.com', 2, '123');

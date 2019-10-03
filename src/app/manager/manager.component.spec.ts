@@ -19,7 +19,27 @@ describe('ManagerComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create component', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should have no channel after leaving channel', () =>{
+    component.leaveChannel();
+    expect(component.currentChannel).toBe("");
+  });
+
+  it('should have no group after leaving group', () =>{
+    component.leaveGroup();
+    expect(component.currentGroup).toBe("");
+  });
+
+  it('should not be assis after leaving group', () =>{
+    component.leaveGroup();
+    expect(component.isAssis).toBeFalsy();
+  });
+
+  it('should have no messages after clearing', () =>{
+    component.clearMessages();
+    expect(component.messages.length).toBe(0);
   });
 });

@@ -86,7 +86,6 @@ export class ManagerComponent implements OnInit {
   }
 
   uploadAvatar(){
-    this.socketService.send('uploadavatar', { image: true, buffer: buf.toString('base64') });
   }
 
   logout(){
@@ -132,46 +131,46 @@ export class ManagerComponent implements OnInit {
     this.perms = parseInt(localStorage.getItem('perms'));
     this.username = localStorage.getItem('username');
     this.socketService.send('populate', '');
-    this.socketService.listen('event').subscribe((data)=>{
+    this.socketService.listen('event').subscribe((data : any)=>{
        console.log(data);
     });
-    this.socketService.listen('showgroups').subscribe((data)=>{
+    this.socketService.listen('showgroups').subscribe((data : any)=>{
        this.groups = [];
        var glist = JSON.parse(data);
        for(var i = 0; i < glist.length; ++i){
          this.groups.push(glist[i]);
        }
     });
-    this.socketService.listen('setgroup').subscribe((data)=>{
+    this.socketService.listen('setgroup').subscribe((data : string)=>{
       if(this.currentGroup != data){
         this.currentGroup = data;
         this.currentChannel = "";
         this.clearMessages();
       }
     });
-    this.socketService.listen('setchannel').subscribe((data)=>{
+    this.socketService.listen('setchannel').subscribe((data : string)=>{
        this.currentChannel = data;
        this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has joined the chat."]);
        this.clearMessages();
     });
-    this.socketService.listen('kick').subscribe((data)=>{
+    this.socketService.listen('kick').subscribe((data : string)=>{
       if(this.username == data){
        this.logout();
        this.clearMessages();
      }
     });
-    this.socketService.listen('setassis').subscribe((data)=>{
+    this.socketService.listen('setassis').subscribe((data : number)=>{
       if(data == 0){
         this.isAssis = false;
       }else{
         this.isAssis = true;
       }
     });
-    this.socketService.listen('setperms').subscribe((data)=>{
-      localStorage.setItem('perms', data);
+    this.socketService.listen('setperms').subscribe((data : number)=>{
+      localStorage.setItem('perms', (""+data));
        this.perms = data;
     });
-    this.socketService.listen('kickfromgroup').subscribe((data)=>{
+    this.socketService.listen('kickfromgroup').subscribe((data : string)=>{
       if(this.currentGroup == data){
         alert("You have been kicked from the group!");
         if(this.currentChannel != ""){
@@ -183,7 +182,7 @@ export class ManagerComponent implements OnInit {
         this.isAssis = false;
       }
     });
-    this.socketService.listen('kickfromchannel').subscribe((data)=>{
+    this.socketService.listen('kickfromchannel').subscribe((data : any[])=>{
       if(this.currentGroup == data[0] && this.currentChannel == data[1]){
         alert("You have been kicked from the channel!");
         this.socketService.send('rawmessage', [this.username, this.currentGroup, this.currentChannel, this.username+" has left the chat."]);
@@ -193,26 +192,25 @@ export class ManagerComponent implements OnInit {
         this.isAssis = false;
       }
     });
-    this.socketService.listen('setassisforgrp').subscribe((data)=>{
+    this.socketService.listen('setassisforgrp').subscribe((data : any[])=>{
       if(this.currentGroup == data[0]){
         this.isAssis = (data[1] == 1);
       }
     });
-    this.socketService.listen('message').subscribe((data)=>{
+    this.socketService.listen('message').subscribe((data : any[])=>{
       if(this.currentGroup == data[1] && this.currentChannel == data[2]){
         this.messages.push(data[3]);
       }
     });
-    this.socketService.listen('refreshchannels').subscribe((data)=>{
+    this.socketService.listen('refreshchannels').subscribe((data : string[])=>{
       if(data[0] == this.currentGroup){
         this.channels = [];
         this.socketService.send('refreshchannels', [data[0], this.username]);
         this.clearMessages();
       }
     });
-    this.socketService.listen('showchannels').subscribe((data)=>{
+    this.socketService.listen('showchannels').subscribe((data : any)=>{
       var chlist = JSON.parse(data);
-      console.log("got showchannels"+data);
       //if(grp == this.currentGroup){
         for(var i = 0; i < chlist.length; ++i){
           console.log(chlist[i]);
