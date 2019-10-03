@@ -18,11 +18,7 @@ describe('LoginComponent', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
-
-  it('should create component', () => {
-    expect(component).toBeTruthy();
-  });
-
+  
   it('should report when all fields are not filled', () => {
     expect(component.allFieldsFilled()).toBeTruthy();
   });
